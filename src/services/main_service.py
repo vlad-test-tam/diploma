@@ -1,4 +1,5 @@
 import os
+import uuid
 from datetime import datetime
 
 from src.entities.image import ImageAddDTO
@@ -20,7 +21,6 @@ class MainService:
         self.user_repo = user_repo
         self.image_repo = image_repo
 
-    # TODO остановился здесь
     def add_image(self, user_id, is_liked, defected_path, segmented_path, masked_path, fixed_path):
         image_data = ImageAddDTO(
             user_id=user_id,
@@ -31,7 +31,6 @@ class MainService:
             masked_path=masked_path,
             segmented_path=fixed_path
         )
-
         self.image_repo.add_image(image_data)
 
     def decrease_attempts_count(self, user_id):
@@ -63,3 +62,19 @@ class MainService:
         inpainted_image = Image.open(inpainting.out)
 
         return inpainted_image, masked_image
+
+    def generate_unique_filename(self, original_filename: str) -> str:
+        ext = original_filename.split('.')[-1]
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        unique_id = uuid.uuid4().hex
+        return f"{timestamp}_{unique_id}.{ext}"
+
+    def handle_processing(self, st, upload_folder, filename):
+        processed_image, masked_image = self.image_processing(st.session_state.uploaded_image, upload_folder, filename)
+        st.session_state.original_image = st.session_state.uploaded_image
+        st.session_state.masked_image = masked_image
+        st.session_state.result_image = processed_image
+
+        defected_image = Image.open(st.session_state.original_image)
+        defected_image.save(upload_folder + "/defected/" + filename)
+        st.session_state.result_image.save(upload_folder + "/fixed/" + filename)

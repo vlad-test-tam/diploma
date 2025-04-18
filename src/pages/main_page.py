@@ -1,6 +1,4 @@
 import os
-import uuid
-from datetime import datetime
 
 from PIL import Image
 import streamlit as st
@@ -8,21 +6,26 @@ from streamlit_image_comparison import image_comparison
 
 from src.models.user import User
 from src.pages.auth_page import AuthPage
+from src.pages.base_page import BasePage
 from src.services.account_service import AccountService
 from src.services.main_service import MainService
 from src.utils.ui import UserInterfaceUtils
 
 
-class MainPage:
-    def __init__(self, auth: AuthPage, upload_folder=r"D:\Projects\Python\diploma_project\saved_images\storage", logo_path="", example_img_path="", arrow_left_path="", arrow_right_path=""):
-        self.upload_folder = upload_folder
-        self.logo_path = logo_path
-        self.example_img_path = example_img_path
-        self.arrow_left_path = arrow_left_path
-        self.arrow_right_path = arrow_right_path
+class MainPage(BasePage):
+    def __init__(self, auth: AuthPage, paths: dict):
+        self.upload_folder = paths["upload_folder"]
+        self.logo_path = paths["logo_path"]
+        self.example1_img_path = paths["example1_path"]
+        self.example2_img_path = paths["example2_path"]
+        self.example3_img_path = paths["example3_path"]
+        self.arrow_left_path = paths["arrow_left_path"]
+        self.arrow_right_path = paths["arrow_right_path"]
+
         self.ui_utils = UserInterfaceUtils()
         self.main_service = MainService()
         self.account_service = AccountService()
+
         self.auth = auth
         os.makedirs(self.upload_folder, exist_ok=True)
 
@@ -33,7 +36,7 @@ class MainPage:
             if key not in st.session_state:
                 st.session_state[key] = default
 
-    def render_header(self):
+    def build_header(self):
         logo_base64 = self.ui_utils.get_image_base64(self.logo_path)
         st.markdown(f"""
         <style>
@@ -164,7 +167,7 @@ class MainPage:
             st.session_state.state = "processed_with_steps"
         st.rerun()
 
-    def render_ui(self, user_info: User):
+    def build_content(self, user_info: User):
         self.inject_styles()
         free_uses = user_info.free_attempts_count
         is_subscription_active, remain_time = self.account_service.calculate_subscription_time_left(user_info)
@@ -232,9 +235,14 @@ class MainPage:
                     unsafe_allow_html=True
                 )
 
-                filename = self.generate_unique_filename(st.session_state.uploaded_image.name)
+                filename = self.main_service.generate_unique_filename(st.session_state.uploaded_image.name)
                 st.session_state["filename"] = filename
-                self.handle_processing(filename, st.session_state["show_steps"])
+                self.main_service.handle_processing(st, self.upload_folder, filename)
+                if not st.session_state["show_steps"]:
+                    st.session_state.state = "processed"
+                else:
+                    st.session_state.state = "processed_with_steps"
+                st.rerun()
             else:
                 st.error("У вас закончились бесплатные попытки, купите подписку")
 
@@ -269,14 +277,12 @@ class MainPage:
 
         st.markdown('</div>', unsafe_allow_html=True)
 
-    def generate_unique_filename(self, original_filename: str) -> str:
-        ext = original_filename.split('.')[-1]
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        unique_id = uuid.uuid4().hex
-        return f"{timestamp}_{unique_id}.{ext}"
+        self.build_description_and_faq()
 
-    def render_description_and_faq(self):
-        example = self.ui_utils.get_image_base64(self.example_img_path)
+    def build_description_and_faq(self):
+        example1 = self.ui_utils.get_image_base64(self.example1_img_path)
+        example2 = self.ui_utils.get_image_base64(self.example2_img_path)
+        example3 = self.ui_utils.get_image_base64(self.example3_img_path)
         left = self.ui_utils.get_image_base64(self.arrow_left_path)
         right = self.ui_utils.get_image_base64(self.arrow_right_path)
 
@@ -286,18 +292,16 @@ class MainPage:
         </div>
         """
 
-        # Центрированное изображение-стрелка
         to_left_arrow_img_html = f"""
         <div style='margin: 30px 0; display: flex; justify-content: center;'>
             <img src="data:image/png;base64,{left}" style='height: 75px;' />
         </div>
         """
 
-        # Здесь можно вывести карточки и FAQ, аналогично как было в оригинале
         card1 = f"""
             <div style='width: 700px; height: 250px; background-color: #f3f3f3; border-radius: 12px; display: flex; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-top: 100px;'>
                 <div style='flex: 5;'>
-                    <img src="data:image/png;base64,{example}" style='height: 100%; width: 100%; object-fit: cover;' />
+                    <img src="data:image/png;base64,{example1}" style='height: 100%; width: 100%; object-fit: cover;' />
                 </div>
                 <div style='flex: 8; padding: 20px; display: flex; align-items: center; justify-content: center;'>
                     <p style='font-size: 18px; color: #222; text-align: center;'>
@@ -315,7 +319,7 @@ class MainPage:
                     </p>
                 </div>
                 <div style='flex: 5;'>
-                    <img src="data:image/png;base64,{example}" style='height: 100%; width: 100%; object-fit: cover;' />
+                    <img src="data:image/png;base64,{example2}" style='height: 100%; width: 100%; object-fit: cover;' />
                 </div>
             </div>
             """
@@ -323,7 +327,7 @@ class MainPage:
         card3 = f"""
             <div style='width: 700px; height: 250px; background-color: #f3f3f3; border-radius: 12px; display: flex; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 60px;'>
                 <div style='flex: 5;'>
-                    <img src="data:image/png;base64,{example}" style='height: 100%; width: 100%; object-fit: cover;' />
+                    <img src="data:image/png;base64,{example3}" style='height: 100%; width: 100%; object-fit: cover;' />
                 </div>
                 <div style='flex: 8; padding: 20px; display: flex; align-items: center; justify-content: center;'>
                     <p style='font-size: 18px; color: #222; text-align: center;'>
@@ -333,7 +337,6 @@ class MainPage:
             </div>
             """
 
-        # Выводим карточки по очереди
         st.markdown("<div style='display: flex; flex-direction: column; align-items: center;'>", unsafe_allow_html=True)
         st.markdown(card1, unsafe_allow_html=True)
         st.markdown(to_left_arrow_img_html, unsafe_allow_html=True)
@@ -365,24 +368,11 @@ class MainPage:
             """,
             unsafe_allow_html=True
         )
-
         st.markdown('</div>', unsafe_allow_html=True)
 
     def run(self):
         self.setup_session_state()
-        if 'USER_ID' not in st.session_state:
-            if 'USER_ID' in self.auth.cookies:
-                st.session_state['USER_ID'] = int(self.auth.cookies['USER_ID'])
-        if 'USER_ID' not in st.session_state or not st.session_state['USER_ID']:
-            st.warning("Пожалуйста, войдите в систему")
-            return
-        user_id = st.session_state['USER_ID']
-        if not user_id:
-            st.warning("Пожалуйста, войдите в систему")
-            return
-        else:
-            user = self.auth.auth_service.get_user_by_id(user_id)
-
-        self.render_header()
-        self.render_ui(user)
-        self.render_description_and_faq()
+        ui_utils = UserInterfaceUtils()
+        user = ui_utils.get_current_user(st, self.auth)
+        self.build_header()
+        self.build_content(user)

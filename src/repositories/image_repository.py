@@ -76,7 +76,6 @@ class ImageRepository:
         if not db_image:
             return None
 
-        # Меняем статус
         db_image.is_liked = not db_image.is_liked
         self.db.commit()
 

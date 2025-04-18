@@ -1,5 +1,4 @@
 from sqlalchemy import Column, Integer, String, DateTime, Boolean
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
 from src.models.base import Base

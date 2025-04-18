@@ -20,15 +20,12 @@ class UserRepository:
         return self.db.query(User).filter(User.id == user_id).first()
 
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
-        """Проверяет соответствие пароля хэшу"""
         return pwd_context.verify(plain_password, hashed_password)
 
     def get_password_hash(self, password: str) -> str:
-        """Генерирует хэш пароля"""
         return pwd_context.hash(password)
 
     def create_user(self, user_data: UserAddDTO) -> UserDTO:
-        """Создает нового пользователя с проверкой уникальности"""
         if self.get_user_by_email(user_data.email):
             raise ValueError("Email already exists")
 
@@ -61,7 +58,6 @@ class UserRepository:
             self.db.commit()
 
     def verify_user_password(self, email: str, password_to_check: str) -> bool:
-        """Проверяет соответствие пароля пользователя"""
         user = self.get_user_by_email(email)
         if user:
             return self.verify_password(password_to_check, user.password)
@@ -97,11 +93,8 @@ class UserRepository:
         return user
 
     def decrease_attempts_count(self, user_id):
-
         user = self.db.query(User).filter(User.id == user_id).first()
-        print("user.free_attempts_count=", user.free_attempts_count)
         user.free_attempts_count -= 1
         self.db.commit()
-        print("minus user.free_attempts_count=", user.free_attempts_count)
         self.db.refresh(user)
         return user.free_attempts_count
