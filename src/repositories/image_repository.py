@@ -100,4 +100,4 @@ class ImageRepository:
 
         except Exception as e:
             self.db.rollback()
-            raise RuntimeError(f"Ошибка при удалении изображения: {str(e)}")
+            raise RuntimeError(f"Deleting image error: {str(e)}")

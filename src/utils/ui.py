@@ -8,13 +8,14 @@ class UserInterfaceUtils:
 
     def init_paths(self):
         return {
-            "upload_folder": r"D:\Projects\Python\diploma_project\saved_images\storage",
-            "logo_path": r"D:\Projects\Python\diploma_project\saved_images\front\logo-flawless.png",
-            "arrow_left_path": r"D:\Projects\Python\diploma_project\saved_images\front\right_to_left.png",
-            "arrow_right_path": r"D:\Projects\Python\diploma_project\saved_images\front\left_to_right.png",
-            "example1_path": r"D:\Projects\Python\diploma_project\saved_images\front\example_1.png",
-            "example2_path": r"D:\Projects\Python\diploma_project\saved_images\front\example_1.png",
-            "example3_path": r"D:\Projects\Python\diploma_project\saved_images\front\example_1.png"
+            "temp_folder": r"saved_images\buff",
+            "upload_folder": r"saved_images\storage",
+            "logo_path": r"saved_images\front\logo-flawless.png",
+            "arrow_left_path": r"saved_images\front\right_to_left.png",
+            "arrow_right_path": r"saved_images\front\left_to_right.png",
+            "example1_path": r"saved_images\front\example_1.png",
+            "example2_path": r"saved_images\front\example_1.png",
+            "example3_path": r"saved_images\front\example_1.png"
         }
 
     def get_current_user(self, st, auth):

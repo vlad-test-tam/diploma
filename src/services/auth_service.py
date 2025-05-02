@@ -1,5 +1,4 @@
 import re
-import json
 from datetime import datetime
 from typing import Optional
 
@@ -81,7 +80,6 @@ class AuthService:
 
     def change_password(self, email: str, new_password: str) -> None:
         hashed_password = self.user_repo.get_password_hash(new_password)
-        print(new_password)
         self.user_repo.update_user_password(email, hashed_password)
 
     def check_current_password(self, email: str, current_password: str) -> bool:

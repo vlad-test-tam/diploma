@@ -1,0 +1,30 @@
+{
+    "version": 1,
+    "disable_existing_loggers": false,
+    "formatters": {
+        "simple": {
+            "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        }
+    },
+    "handlers": {
+        "warning_file": {
+            "class": "logging.FileHandler",
+            "filename": "logs/warnings.log",
+            "formatter": "simple",
+            "level": "WARNING"
+        },
+        "error_file": {
+            "class": "logging.FileHandler",
+            "filename": "logs/errors.log",
+            "formatter": "simple",
+            "level": "ERROR"
+        }
+    },
+    "loggers": {
+        "proj_logger": {
+            "handlers": ["console", "warning_file", "error_file"],
+            "level": "DEBUG",
+            "propagate": false
+        }
+    }
+}

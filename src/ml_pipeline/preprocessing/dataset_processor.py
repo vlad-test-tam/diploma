@@ -9,7 +9,7 @@ from src.ml_pipeline.preprocessing.defects_generator.scratch_generator import Sc
 
 
 class PicsProcessor:
-    def __init__(self, source_dir: str, images_dir: str, labels_dir: str, masks_dir: str, train_images_num: int = 10000):
+    def __init__(self, source_dir: str, images_dir: str, labels_dir: str, masks_dir: str, train_images_num: int = 40000):
         self.source_dir = source_dir
         self.images_dir = images_dir
         self.labels_dir = labels_dir
@@ -98,9 +98,9 @@ class PicsProcessor:
 
 if __name__ == '__main__':
     processor = PicsProcessor(
-        r'D:\Projects\Python\diploma_project\src\ml_pipeline\original_images\yolov11\scratch',
-        r'D:\Projects\Python\diploma_project\src\ml_pipeline\dataset\images',
-        r'D:\Projects\Python\diploma_project\src\ml_pipeline\dataset\labels',
-        r'D:\Projects\Python\diploma_project\src\ml_pipeline\dataset\masks'
+        r'D:\Projects\Python\diploma_project\src\ml_pipeline\original_images\yolov11\scratch3',
+        r'D:\Projects\Python\diploma_project\src\ml_pipeline\dataset3\images',
+        r'D:\Projects\Python\diploma_project\src\ml_pipeline\dataset3\labels',
+        r'D:\Projects\Python\diploma_project\src\ml_pipeline\dataset3\masks'
     )
     processor.process_images()

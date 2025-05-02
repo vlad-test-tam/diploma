@@ -1,3 +1,5 @@
+import os
+
 import streamlit as st
 from src.utils.ui import UserInterfaceUtils
 
@@ -11,6 +13,8 @@ from src.pages.history_page import HistoryPage
 if __name__ == "__main__":
     ui_utils = UserInterfaceUtils()
     paths = ui_utils.init_paths()
+    for key in paths:
+        paths[key] = os.path.join(os.path.dirname(__file__), paths[key])
 
     auth = AuthPage(logo_path=paths["logo_path"])
     logged_in = auth.run()

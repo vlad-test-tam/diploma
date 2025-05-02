@@ -7,13 +7,16 @@ from streamlit_image_comparison import image_comparison
 from src.models.user import User
 from src.pages.auth_page import AuthPage
 from src.pages.base_page import BasePage
+from src.pages.html_jnjection_handlers.main_handler import MainInjectionHandler
 from src.services.account_service import AccountService
 from src.services.main_service import MainService
+from src.utils.logger import logger
 from src.utils.ui import UserInterfaceUtils
 
 
 class MainPage(BasePage):
     def __init__(self, auth: AuthPage, paths: dict):
+        self.temp_folder = paths["temp_folder"]
         self.upload_folder = paths["upload_folder"]
         self.logo_path = paths["logo_path"]
         self.example1_img_path = paths["example1_path"]
@@ -25,6 +28,7 @@ class MainPage(BasePage):
         self.ui_utils = UserInterfaceUtils()
         self.main_service = MainService()
         self.account_service = AccountService()
+        self.injection_handler = MainInjectionHandler()
 
         self.auth = auth
         os.makedirs(self.upload_folder, exist_ok=True)
@@ -38,110 +42,10 @@ class MainPage(BasePage):
 
     def build_header(self):
         logo_base64 = self.ui_utils.get_image_base64(self.logo_path)
-        st.markdown(f"""
-        <style>
-            .custom-header {{
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 200px;
-                background-color: #1e2228;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                padding-top: 10px;
-                z-index: 1000;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-            }}
-
-            .custom-header img {{
-                height: 110px;
-                margin-bottom: 10px;
-            }}
-
-            .header-buttons {{
-                display: flex;
-                gap: 16px;
-            }}
-
-            .header-buttons a {{
-                padding: 6px 16px;
-                border-radius: 8px;
-                background-color: transparent;
-                color: orange;
-                border: 2px solid orange;
-                font-weight: 500;
-                text-decoration: none;
-                display: inline-block;
-                text-align: center;
-            }}
-
-            .header-buttons a:hover {{
-                background-color: #3a3e45;
-            }}
-
-            .main-content {{
-                margin-top: 130px;
-            }}
-        </style>
-
-        <div class="custom-header">
-            <img src="data:image/png;base64,{logo_base64}" alt="Logo" />
-            <div class="header-buttons">
-                <a href="/" target="_self">Главная</a>
-                <a href="/?page=history" target="_self">История</a>
-                <a href="/?page=account" target="_self">Аккаунт</a>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    def inject_styles(self):
-        st.markdown("""
-        <style>
-        .stButton > button {
-            background-color: #ff6600;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 8px;
-            border: 2px solid #ff6600;
-            font-size: 16px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-            width: 100%;
-        }
-
-        .stButton > button:hover {
-            background-color: #e67300;
-        }
-
-        .usage-box {
-            padding: 6px 16px;
-            border-radius: 8px;
-            background-color: transparent;
-            color: orange;
-            border: 2px solid orange;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            height: 38px;
-        }
-
-        .stCheckbox > div > div > div {
-            font-size: 16px;
-            color: #333333;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .stCheckbox input[type="checkbox"]:checked {
-            background-color: #ff6600;
-        }
-        </style>
-        """, unsafe_allow_html=True)
+        self.injection_handler.header_injection(st, logo_base64)
 
     def reset_app(self):
+        self.main_service.delete_temp_image(self.temp_folder, st.session_state["filename"])
         st.session_state.state = "initial"
         st.session_state.uploaded_image = None
         st.session_state.original_image = None
@@ -149,62 +53,18 @@ class MainPage(BasePage):
 
     def process_image(self):
         st.session_state.state = "processing"
-        st.rerun()
-
-    def handle_processing(self, filename, show_steps):
-        processed_image, masked_image = self.main_service.image_processing(st.session_state.uploaded_image, self.upload_folder, filename)
-        st.session_state.original_image = st.session_state.uploaded_image
-        st.session_state.masked_image = masked_image
-        st.session_state.result_image = processed_image
-
-        defected_image = Image.open(st.session_state.original_image)
-        defected_image.save(self.upload_folder + "/defected/" + filename)
-        st.session_state.result_image.save(self.upload_folder + "/fixed/" + filename)
-
-        if not show_steps:
-            st.session_state.state = "processed"
-        else:
-            st.session_state.state = "processed_with_steps"
-        st.rerun()
+        # st.rerun()
 
     def build_content(self, user_info: User):
-        self.inject_styles()
+        self.injection_handler.styles_injection(st)
         free_uses = user_info.free_attempts_count
         is_subscription_active, remain_time = self.account_service.calculate_subscription_time_left(user_info)
         st.markdown('<div class="main-content">', unsafe_allow_html=True)
 
-        st.markdown(
-            """
-            <h1 style='font-size: 65px; color: #222222; text-align: center; margin-bottom: 50px;'>
-                ОДИН счастливый пользователь по всему миру!
-            </h1>
-            <h1 style='font-size: 50px; color: #222222; text-align: center; margin-bottom: 60px;'>
-                Исправляйте быстро свои изображения
-            </h1>
-            """,
-            unsafe_allow_html=True
-        )
+        self.injection_handler.greeting_injection(st)
+
         if free_uses > 0 and st.session_state.state != "processed":
-            st.markdown(
-                f"""
-                        <div class='usage-box' style='
-                            text-align: center;
-                            background-color: #f3f3f3;
-                            padding: 10px;
-                            border-radius: 8px;
-                            margin-bottom: 30px;
-                            width: 220px;
-                            margin-left: auto;
-                            margin-right: auto;
-                            color: orange;
-                            border: 2px solid orange;
-                            font-weight: 500;
-                        '>
-                            <span>Бесплатных применений: {free_uses}</span>
-                        </div>
-                        """,
-                unsafe_allow_html=True
-            )
+            self.injection_handler.remain_subscription_injection(st, "Бесплатных применений", free_uses, 220)
 
         if st.session_state.state == "initial":
             st.markdown("<h2 style='text-align: center;'>Перетащите или выберите изображение</h2>", unsafe_allow_html=True)
@@ -224,53 +84,60 @@ class MainPage(BasePage):
 
         elif st.session_state.state == "processing":
             if free_uses > 0 or is_subscription_active:
-                self.main_service.decrease_attempts_count(user_info.id)
+                if free_uses > 0:
+                    self.main_service.decrease_attempts_count(user_info.id)
 
                 st.markdown(
                     """
-                    <div style='padding: 15px; background-color: #ff6600; color: white; border-radius: 8px; font-size: 18px; text-align: center;'>
-                        🚀 Обработка изображения...
-                    </div>
+                    <div style='padding: 15px; background-color: #ff6600; color: white; border-radius: 8px; font-size: 18px; text-align: center;'>🚀 Обработка изображения...</div>
                     """,
                     unsafe_allow_html=True
                 )
 
                 filename = self.main_service.generate_unique_filename(st.session_state.uploaded_image.name)
                 st.session_state["filename"] = filename
-                self.main_service.handle_processing(st, self.upload_folder, filename)
+                self.main_service.handle_processing(st, self.temp_folder, filename)
                 if not st.session_state["show_steps"]:
                     st.session_state.state = "processed"
                 else:
                     st.session_state.state = "processed_with_steps"
+                logger.debug(f"User (id={user_info.id}) successfully processed image")
                 st.rerun()
             else:
                 st.error("У вас закончились бесплатные попытки, купите подписку")
+                logger.debug(f"User (id={user_info.id}) tried to process without permissions")
 
         elif st.session_state.state == "processed" or st.session_state.state == "processed_with_steps":
-            defected_file_path = os.path.join(self.upload_folder, "defected", st.session_state["filename"])
-            print("upload_folder", self.upload_folder)
-            fixed_file_path = os.path.join(self.upload_folder, "fixed", st.session_state["filename"])
-            masked_file_path = os.path.join(self.upload_folder, "masked", st.session_state["filename"])
-            segmented_file_path = os.path.join(self.upload_folder, "segmented", st.session_state["filename"])
-
             st.markdown("<h3 style='text-align:center;'>Результат обработки:</h3>", unsafe_allow_html=True)
+            if st.session_state.state == "processed_with_steps":
+                st.markdown("<h4 style='text-align:center;'>Маска изображения:</h4>", unsafe_allow_html=True)
+                image_comparison(
+                    img1=Image.open(st.session_state.original_image),
+                    img2=st.session_state.masked_image,
+                    label1="До", label2="После"
+                )
+                st.markdown("<h4 style='text-align:center;'>Удаление найденных дефектов:</h4>", unsafe_allow_html=True)
+                image_comparison(
+                    img1=st.session_state.masked_image,
+                    img2=st.session_state.result_image,
+                    label1="До", label2="После"
+                )
+
             image_comparison(
                 img1=Image.open(st.session_state.original_image),
                 img2=st.session_state.result_image,
                 label1="До", label2="После"
             )
-            if st.session_state.state == "processed_with_steps":
-                st.markdown("<h4 style='text-align:center;'>Маска изображения:</h4>", unsafe_allow_html=True)
-                st.image(st.session_state.masked_image, use_container_width=True)
             col1, col2 = st.columns(2)
             with col1:
                 if st.button("💾 Сохранить результат"):
-                    self.main_service.add_image(user_info.id, False, defected_file_path, fixed_file_path, masked_file_path, segmented_file_path)
+                    self.main_service.add_image(user_info.id, False, self.temp_folder, self.upload_folder, st.session_state["filename"])
+                    logger.info(f"User (id={user_info.id}) save image successfully")
                     st.success("Изображение сохранено")
             with col2:
                 if st.button("⭐ Добавить в понравившиеся"):
-                    self.main_service.add_image(user_info.id, True, defected_file_path, fixed_file_path,
-                                                masked_file_path, segmented_file_path)
+                    self.main_service.add_image(user_info.id, True, self.temp_folder, self.upload_folder, st.session_state["filename"])
+                    logger.info(f"User (id={user_info.id}) save image as 'liked' successfully")
                     st.success("Изображение сохранено")
 
             st.button("🔙 Вернуться", on_click=self.reset_app)
@@ -286,88 +153,15 @@ class MainPage(BasePage):
         left = self.ui_utils.get_image_base64(self.arrow_left_path)
         right = self.ui_utils.get_image_base64(self.arrow_right_path)
 
-        to_right_arrow_img_html = f"""
-        <div style='margin: 30px 0; display: flex; justify-content: center;'>
-            <img src="data:image/png;base64,{right}" style='height: 75px;' />
-        </div>
-        """
-
-        to_left_arrow_img_html = f"""
-        <div style='margin: 30px 0; display: flex; justify-content: center;'>
-            <img src="data:image/png;base64,{left}" style='height: 75px;' />
-        </div>
-        """
-
-        card1 = f"""
-            <div style='width: 700px; height: 250px; background-color: #f3f3f3; border-radius: 12px; display: flex; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-top: 100px;'>
-                <div style='flex: 5;'>
-                    <img src="data:image/png;base64,{example1}" style='height: 100%; width: 100%; object-fit: cover;' />
-                </div>
-                <div style='flex: 8; padding: 20px; display: flex; align-items: center; justify-content: center;'>
-                    <p style='font-size: 18px; color: #222; text-align: center;'>
-                        Это первое описание — здесь можно рассказать, что делает система или показать пример исправления.
-                    </p>
-                </div>
-            </div>
-            """
-
-        card2 = f"""
-            <div style='width: 700px; height: 250px; background-color: #f3f3f3; border-radius: 12px; display: flex; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1);'>
-                <div style='flex: 8; padding: 20px; display: flex; align-items: center; justify-content: center;'>
-                    <p style='font-size: 18px; color: #222; text-align: center;'>
-                        Второй пример: можно продемонстрировать шаг обработки или результат сравнения до/после.
-                    </p>
-                </div>
-                <div style='flex: 5;'>
-                    <img src="data:image/png;base64,{example2}" style='height: 100%; width: 100%; object-fit: cover;' />
-                </div>
-            </div>
-            """
-
-        card3 = f"""
-            <div style='width: 700px; height: 250px; background-color: #f3f3f3; border-radius: 12px; display: flex; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 60px;'>
-                <div style='flex: 5;'>
-                    <img src="data:image/png;base64,{example3}" style='height: 100%; width: 100%; object-fit: cover;' />
-                </div>
-                <div style='flex: 8; padding: 20px; display: flex; align-items: center; justify-content: center;'>
-                    <p style='font-size: 18px; color: #222; text-align: center;'>
-                        Третий блок может содержать отзывы, подсказки или любые важные моменты работы с системой.
-                    </p>
-                </div>
-            </div>
-            """
-
-        st.markdown("<div style='display: flex; flex-direction: column; align-items: center;'>", unsafe_allow_html=True)
-        st.markdown(card1, unsafe_allow_html=True)
-        st.markdown(to_left_arrow_img_html, unsafe_allow_html=True)
-        st.markdown(card2, unsafe_allow_html=True)
-        st.markdown(to_right_arrow_img_html, unsafe_allow_html=True)
-        st.markdown(card3, unsafe_allow_html=True)
+        st.markdown("<div style='display: flex; flex-direction: column; align-items: center;  margin-top: 150px;'>", unsafe_allow_html=True)
+        self.injection_handler.odd_card_injection(st, example1, "Это первое описание — здесь можно рассказать, что делает система или показать пример исправления.")
+        self.injection_handler.arrow_injection(st, left)
+        self.injection_handler.even_card_injection(st, example2, "Второй пример: можно продемонстрировать шаг обработки или результат сравнения до/после.")
+        self.injection_handler.arrow_injection(st, right)
+        self.injection_handler.odd_card_injection(st, example3, "Третий блок может содержать отзывы, подсказки или любые важные моменты работы с системой.")
         st.markdown("</div>", unsafe_allow_html=True)
 
-        # ---------- FAQ секция ----------
-        st.markdown(
-            """
-            <h2 style='text-align: center; color: #222222; margin-top: 60px;'>
-                Популярные вопросы:
-            </h2>
-            <div style='max-width: 700px; margin: 30px auto 0 auto;'>
-            <details style='background-color: #2e2e2e; padding: 10px; border-radius: 8px; margin-bottom: 10px;'>
-                <summary style='cursor: pointer; color: #f5c518; font-size: 18px;'>Какой формат изображений поддерживается?</summary>
-                <p style='color: white; padding-left: 15px;'>Вы можете загружать изображения в формате JPG, JPEG и PNG.</p>
-            </details>
-            <details style='background-color: #2e2e2e; padding: 10px; border-radius: 8px; margin-bottom: 10px;'>
-                <summary style='cursor: pointer; color: #f5c518; font-size: 18px;'>Где сохраняются загруженные изображения?</summary>
-                <p style='color: white; padding-left: 15px;'>Все изображения сохраняются в папку <code>uploaded_images</code> внутри проекта.</p>
-            </details>
-            <details style='background-color: #2e2e2e; padding: 10px; border-radius: 8px; margin-bottom: 10px;'>
-                <summary style='cursor: pointer; color: #f5c518; font-size: 18px;'>Как изменить изображение после загрузки?</summary>
-                <p style='color: white; padding-left: 15px;'>Просто загрузите новое изображение — оно заменит предыдущее.</p>
-            </details>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+        self.injection_handler.faq_injection(st)
         st.markdown('</div>', unsafe_allow_html=True)
 
     def run(self):

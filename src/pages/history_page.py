@@ -6,8 +6,10 @@ from pathlib import Path
 
 from src.pages.auth_page import AuthPage
 from src.pages.base_page import BasePage
+from src.pages.html_jnjection_handlers.history_handler import HistoryInjectionHandler
 from src.services.history_service import HistoryService
 from src.utils.ui import UserInterfaceUtils
+from src.utils.logger import logger
 from streamlit_image_comparison import image_comparison
 from PIL import Image
 
@@ -24,6 +26,7 @@ class HistoryPage(BasePage):
 
         self.ui_utils = UserInterfaceUtils()
         self.history_service = HistoryService()
+        self.injection_handler = HistoryInjectionHandler()
 
     def get_query_params(self):
         return st.query_params.get("view_image", None)
@@ -33,70 +36,7 @@ class HistoryPage(BasePage):
 
     def build_header(self):
         logo_base64 = self.ui_utils.get_image_base64(self.logo_path)
-        st.markdown(f"""
-        <style>
-            .custom-header {{
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 200px;
-                background-color: #1e2228;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                padding-top: 10px;
-                z-index: 1000;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-            }}
-            .custom-header img {{
-                height: 110px;
-                margin-bottom: 10px;
-            }}
-            .header-buttons {{
-                display: flex;
-                gap: 16px;
-            }}
-            .header-buttons a {{
-                padding: 6px 16px;
-                border-radius: 8px;
-                background-color: transparent;
-                color: orange;
-                border: 2px solid orange;
-                font-weight: 500;
-                text-decoration: none;
-                text-align: center;
-            }}
-            .header-buttons a:hover {{
-                background-color: #3a3e45;
-            }}
-            .main-content {{
-                margin-top: 220px; /* Увеличен отступ для хедера */
-            }}
-            .image-view-content {{
-                margin-top: 120px;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-            }}
-            .image-view-buttons {{
-                display: flex;
-                gap: 16px;
-                margin-top: 20px;
-                margin-bottom: 20px;
-            }}
-        </style>
-
-        <div class="custom-header">
-            <img src="data:image/png;base64,{logo_base64}" alt="Logo" />
-            <div class="header-buttons">
-                <a href="/" target="_self">Главная</a>
-                <a href="/?page=history" target="_self">История</a>
-                <a href="/?page=account" target="_self">Аккаунт</a>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        self.injection_handler.header_injection(st, logo_base64)
 
     def render_image_view(self, item):
         st.markdown('<div class="image-view-content">', unsafe_allow_html=True)
@@ -109,27 +49,7 @@ class HistoryPage(BasePage):
             width=700
         )
 
-        st.markdown("""
-            <style>
-                .stButton > button {
-                    background-color: #1e2228;
-                    color: white !important;
-                    border: 2px solid orange;
-                }
-                
-                div[data-testid="stDownloadButton"] > button {
-                background-color: orange;
-                color: white;
-                border: 2px solid orange;
-            }
-            
-            div[data-testid="stDownloadButton"] > button:hover {
-                background-color: #fff5e6 !important;
-            }
-            </style>
-            
-            
-            """, unsafe_allow_html=True)
+        self.injection_handler.button_styles_injection(st)
 
         col1, col2 = st.columns([1, 1])
 
@@ -197,6 +117,7 @@ class HistoryPage(BasePage):
             self.history_service.delete_image_by_id(item.id)
             st.query_params.clear()
             st.query_params["page"] = "history"
+            logger.info(f"Image (id={item.id}) has been deleted")
             st.rerun()
 
         st.markdown('</div>', unsafe_allow_html=True)
@@ -239,7 +160,6 @@ class HistoryPage(BasePage):
                         else:
                             st.warning("Изображение не найдено.")
 
-                        # Дата
                         st.markdown(
                             f"<div style='margin-top: 10px; font-size: 20px; font-weight: bold; text-align: center;'>{item.fix_datetime}</div>",
                             unsafe_allow_html=True)
@@ -293,6 +213,7 @@ class HistoryPage(BasePage):
                             heart = "❤️" if self.liked_states[item_id] else "🤍"
                             if st.button(heart, key=f"like_{item_id}", use_container_width=True):
                                 self.history_service.toggle_like_status(item.id)
+                                logger.info(f"Image (id={item.id}) like status has been changed")
                                 st.rerun()
 
     def run(self):
@@ -312,5 +233,4 @@ class HistoryPage(BasePage):
                 self.set_query_params({"view_image": None})  # Очищаем параметр
                 st.rerun()
         else:
-            self.history_data
             self.build_content()

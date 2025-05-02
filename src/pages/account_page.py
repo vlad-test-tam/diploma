@@ -6,6 +6,7 @@ from src.pages.base_page import BasePage
 
 from src.pages.html_jnjection_handlers.account_handler import AccountInjectionHandler
 from src.services.account_service import AccountService
+from src.utils.logger import logger
 from src.utils.ui import UserInterfaceUtils
 
 
@@ -97,6 +98,7 @@ class AccountPage(BasePage):
                 if self.auth.auth_service.non_empty_str_check(new_name):
                     st.session_state['name_change_message'] = ("success", f"Имя успешно изменено на {new_name}!")
                     self.auth.auth_service.change_name(user_info.id, new_name)
+                    logger.info(f"User (id={user_info.id}) changed name to {new_name}")
                     st.rerun()
             if 'name_change_message' in st.session_state:
                 msg_type, message = st.session_state['name_change_message']
@@ -109,6 +111,7 @@ class AccountPage(BasePage):
             if st.button("Сменить пароль", key="change_password"):
                 st.session_state['password_change_message'] = ("success", f"Пароль успешно изменен!")
                 self.auth.auth_service.change_password(user_info.email, new_password)
+                logger.info(f"User (id={user_info.id}) changed password successfully")
                 st.rerun()
             if 'password_change_message' in st.session_state:
                 msg_type, message = st.session_state['password_change_message']
