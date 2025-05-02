@@ -10,13 +10,13 @@ class AccountInjectionHandler(BaseInjectionHandler):
                     top: 0;
                     left: 0;
                     width: 100%;
-                    height: 200px;
+                    height: 260px;
                     background-color: #1e2228;
                     display: flex;
                     flex-direction: column;
                     align-items: center;
                     justify-content: center;
-                    padding-top: 10px;
+                    padding-top: 60px;
                     z-index: 1000;
                     box-shadow: 0 2px 6px rgba(0,0,0,0.2);
                 }}
