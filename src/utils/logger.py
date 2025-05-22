@@ -20,11 +20,9 @@ class Logger:
         with open(self.config_file, 'r') as f:
             config = json.load(f)
 
-            # Обновляем путь к файлам логов
             config['handlers']['warning_file']['filename'] = os.path.join(self.log_directory, 'warnings.log')
             config['handlers']['error_file']['filename'] = os.path.join(self.log_directory, 'errors.log')
 
-            # Настройка colorlog для консоли
             colorlog_handler = {
                 'class': 'colorlog.StreamHandler',
                 'formatter': 'colored',
@@ -32,7 +30,6 @@ class Logger:
             }
             config['handlers']['console'] = colorlog_handler
 
-            # Обновление формата для colorlog
             config['formatters']['colored'] = {
                 '()': 'colorlog.ColoredFormatter',
                 'format': '%(log_color)s%(asctime)s [%(levelname)s] - %(message)s',
@@ -52,10 +49,3 @@ class Logger:
 log_config = Logger()
 logger = logging.getLogger('proj_logger')
 
-# if __name__ == "__main__":
-#     log_config = Logger()
-#     log = logging.getLogger('proj_logger')
-#     log.debug("Это отладочное сообщение.")
-#     log.info("Это информационное сообщение.")
-#     log.warning("Это предупреждение!")
-#     log.error("Это сообщение об ошибке.")

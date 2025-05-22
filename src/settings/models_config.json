@@ -1,0 +1,11 @@
+{
+  "cnn": {
+    "model_path": "PATH_TO_CNN_PLACEHOLDER",
+    "model_type": "segment",
+    "is_yolo": true
+  },
+  "gan": {
+    "model_path": "PATH_TO_GAN_PLACEHOLDER",
+    "model_class": "src.ml_pipeline.model_gan.train.networks.generator.Generator"
+  }
+}

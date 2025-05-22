@@ -1,42 +1,41 @@
+from typing import Union, List, Tuple
+
 import numpy as np
 from PIL import Image, ImageEnhance, ImageDraw
 import random
 
 
 class DatasetTransformer:
-    def __init__(self, rotation_angles=None, brightness_range=(0.5, 1.5)):
+    def __init__(
+            self, rotation_angles: Union[List[int], None] = None,
+            brightness_range: tuple = (0.5, 1.5)
+    ) -> None:
         self.rotation_angles = rotation_angles if rotation_angles is not None else [15, 30, 45, 60]
         self.brightness_range = brightness_range
 
-    def rotate_image(self, image, angle):
+    def rotate_image(self, image: Image.Image, angle: int) -> Image.Image:
         return image.rotate(angle, expand=False)
 
-    def change_brightness(self, image):
+    def change_brightness(self, image: Image.Image) -> Tuple[Image.Image, float]:
         factor = random.uniform(*self.brightness_range)
         enhancer = ImageEnhance.Brightness(image)
         return enhancer.enhance(factor), factor
 
-    def flip_image(self, image):
+    def flip_image(self, image: Image.Image) -> Tuple[Image.Image, bool]:
         if random.random() > 0.5:
             return image.transpose(Image.FLIP_LEFT_RIGHT), True
         return image, False
 
     def augment(self, image, yolo_labels):
-        # Flip the image
         image, flipped = self.flip_image(image)
 
-        # Rotate the image using fixed angles
         angle = random.choice(self.rotation_angles)
         if random.random() > 0.5:
             angle = -angle
-        image = self.rotate_image(image, angle)
+        image = self.rotate_image(image, -angle)
 
-        width, height = image.size  # получить размер уже после всех трансформаций
-
-        # Change brightness
+        width, height = image.size
         image, brightness_factor = self.change_brightness(image)
-
-        # Update YOLO segmentation labels
         new_labels = []
         for label in yolo_labels:
             class_id = int(label[0])
@@ -47,14 +46,11 @@ class DatasetTransformer:
                 x = points[i] * width
                 y = points[i + 1] * height
 
-                # Flip
                 if flipped:
                     x = width - x
 
-                # Rotate
                 x, y = self.rotate_point(x, y, angle, width / 2, height / 2)
 
-                # Normalize back
                 x /= width
                 y /= height
                 new_points.extend([x, y])
@@ -63,7 +59,10 @@ class DatasetTransformer:
 
         return image, new_labels
 
-    def rotate_point(self, x, y, angle, cx, cy):
+    def rotate_point(
+            self, x: float, y: float, angle: int,
+            cx: float, cy: float
+    ) -> Tuple[float, float]:
         angle_rad = np.deg2rad(angle)
         cos_angle = np.cos(angle_rad)
         sin_angle = np.sin(angle_rad)
@@ -79,7 +78,6 @@ class DatasetTransformer:
             class_id = int(label[0])
             points = label[1:]
 
-            # Преобразуем нормализованные координаты в пиксельные
             polygon = []
             for i in range(0, len(points), 2):
                 x = points[i] * image.width
@@ -94,8 +92,8 @@ class DatasetTransformer:
 
 # Пример использования
 if __name__ == "__main__":
-    image_path = r"D:\Projects\Python\diploma_project\src\ml_pipeline\dataset2\images\train\050000.jpg"
-    labels_path = r"D:\Projects\Python\diploma_project\src\ml_pipeline\dataset2\labels\train\050000.txt"
+    image_path = r"D:\Projects\Python\diploma_project\src\ml_pipeline\images\dataset\images\train\000035.jpg"
+    labels_path = r"D:\Projects\Python\diploma_project\src\ml_pipeline\images\dataset\labels\train\000035.txt"
 
     image = Image.open(image_path)
     with open(labels_path, 'r') as f:

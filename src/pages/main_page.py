@@ -110,9 +110,15 @@ class MainPage(BasePage):
         elif st.session_state.state == "processed" or st.session_state.state == "processed_with_steps":
             st.markdown("<h3 style='text-align:center;'>Результат обработки:</h3>", unsafe_allow_html=True)
             if st.session_state.state == "processed_with_steps":
-                st.markdown("<h4 style='text-align:center;'>Маска изображения:</h4>", unsafe_allow_html=True)
+                st.markdown("<h4 style='text-align:center;'>Сегментация изображения:</h4>", unsafe_allow_html=True)
                 image_comparison(
                     img1=Image.open(st.session_state.original_image),
+                    img2=st.session_state.segmented_image,
+                    label1="До", label2="После"
+                )
+                st.markdown("<h4 style='text-align:center;'>Маска изображения:</h4>", unsafe_allow_html=True)
+                image_comparison(
+                    img1=st.session_state.segmented_image,
                     img2=st.session_state.masked_image,
                     label1="До", label2="После"
                 )
@@ -122,6 +128,7 @@ class MainPage(BasePage):
                     img2=st.session_state.result_image,
                     label1="До", label2="После"
                 )
+                st.markdown("<h4 style='text-align:center;'>Итоговое изображение:</h4>", unsafe_allow_html=True)
 
             image_comparison(
                 img1=Image.open(st.session_state.original_image),
@@ -154,11 +161,12 @@ class MainPage(BasePage):
         right = self.ui_utils.get_image_base64(self.arrow_right_path)
 
         st.markdown("<div style='display: flex; flex-direction: column; align-items: center;  margin-top: 150px;'>", unsafe_allow_html=True)
-        self.injection_handler.odd_card_injection(st, example1, "Это первое описание — здесь можно рассказать, что делает система или показать пример исправления.")
+        st.markdown("<h4 style='text-align:center;'>Процесс обработки изображений:</h4>", unsafe_allow_html=True)
+        self.injection_handler.odd_card_injection(st, example1, "Первый этап обработки - сегментация изображения с применением сверточной нейронной сети и нахождение дефектов.")
         self.injection_handler.arrow_injection(st, left)
-        self.injection_handler.even_card_injection(st, example2, "Второй пример: можно продемонстрировать шаг обработки или результат сравнения до/после.")
+        self.injection_handler.even_card_injection(st, example2, "Второй этап обработки - построение маски изображения с областями, которые необходимо обработать.")
         self.injection_handler.arrow_injection(st, right)
-        self.injection_handler.odd_card_injection(st, example3, "Третий блок может содержать отзывы, подсказки или любые важные моменты работы с системой.")
+        self.injection_handler.odd_card_injection(st, example3, "Третий этап обработки - заполнение выделенных участков изображения с помощью генеративной нейронной сети на основании соседних пикселей.")
         st.markdown("</div>", unsafe_allow_html=True)
 
         self.injection_handler.faq_injection(st)

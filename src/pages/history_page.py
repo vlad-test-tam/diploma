@@ -87,7 +87,7 @@ class HistoryPage(BasePage):
                         if img.mode == 'RGBA':
                             img = img.convert('RGB')
                         img.save(img_bytes, format='JPEG', quality=95)
-                        file_ext = "jpg"
+                        file_ext = "jpeg"
                         mime_type = "image/jpeg"
                     else:
                         img.save(img_bytes, format='PNG')
@@ -230,7 +230,7 @@ class HistoryPage(BasePage):
                 self.render_image_view(selected_item)
             else:
                 st.error("Изображение не найдено!")
-                self.set_query_params({"view_image": None})  # Очищаем параметр
+                self.set_query_params({"view_image": None})
                 st.rerun()
         else:
             self.build_content()

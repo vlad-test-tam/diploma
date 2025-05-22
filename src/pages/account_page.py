@@ -45,7 +45,7 @@ class AccountPage(BasePage):
 
         with col1:
             with st.container():
-                self.injection_handler.plan_box_injection(st, "1 месяц", "Цена: 299 BYN")
+                self.injection_handler.plan_box_injection(st, "1 месяц", "Цена: 10 BYN")
                 if st.button("Купить", key="buy_1"):
                     st.session_state['subscription_message'] = ("success", "Подписка успешно продлена на 1 месяц!")
                     st.session_state['subscription_duration'] = 1
@@ -60,7 +60,7 @@ class AccountPage(BasePage):
 
         with col2:
             with st.container():
-                self.injection_handler.plan_box_injection(st, "3 месяца", "Цена: 749 BYN")
+                self.injection_handler.plan_box_injection(st, "3 месяца", "Цена: 25 BYN")
                 if st.button("Купить", key="buy_3"):
                     st.session_state['subscription_message'] = ("success", "Подписка успешно продлена на 3 месяца!")
                     st.session_state['subscription_duration'] = 3
@@ -75,7 +75,7 @@ class AccountPage(BasePage):
 
         with col3:
             with st.container():
-                self.injection_handler.plan_box_injection(st, "12 месяцев", "Цена: 2399 BYN")
+                self.injection_handler.plan_box_injection(st, "12 месяцев", "Цена: 80 BYN")
                 if st.button("Купить", key="buy_12"):
                     st.session_state['subscription_message'] = ("success", "Подписка успешно продлена на 12 месяцев!")
                     st.session_state['subscription_duration'] = 12
@@ -100,23 +100,34 @@ class AccountPage(BasePage):
                     self.auth.auth_service.change_name(user_info.id, new_name)
                     logger.info(f"User (id={user_info.id}) changed name to {new_name}")
                     st.rerun()
+                else:
+                    st.session_state['name_change_message'] = ("error", f"Введите новое имя пользователя")
+                    st.rerun()
             if 'name_change_message' in st.session_state:
                 msg_type, message = st.session_state['name_change_message']
                 if msg_type == "success":
                     st.success(message)
+                else:
+                    st.error(message)
                 del st.session_state['name_change_message']
 
         with col2:
             new_password = st.text_input("Новый пароль", type="password")
             if st.button("Сменить пароль", key="change_password"):
-                st.session_state['password_change_message'] = ("success", f"Пароль успешно изменен!")
-                self.auth.auth_service.change_password(user_info.email, new_password)
-                logger.info(f"User (id={user_info.id}) changed password successfully")
-                st.rerun()
+                if not self.auth.auth_service.check_len_password(new_password):
+                    st.session_state['password_change_message'] = ("error", f"Минимальная длина пароля должна быть 8 символов")
+                    st.rerun()
+                else:
+                    st.session_state['password_change_message'] = ("success", f"Пароль успешно изменен!")
+                    self.auth.auth_service.change_password(user_info.email, new_password)
+                    logger.info(f"User (id={user_info.id}) changed password successfully")
+                    st.rerun()
             if 'password_change_message' in st.session_state:
                 msg_type, message = st.session_state['password_change_message']
                 if msg_type == "success":
                     st.success(message)
+                else:
+                    st.error(message)
                 del st.session_state['password_change_message']
 
         st.markdown("---")

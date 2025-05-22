@@ -5,8 +5,8 @@ from pydantic_settings import BaseSettings
 
 
 class MlSettings(BaseSettings):
-    path_to_yolo: StrictStr = Field(..., validation_alias="PATH_TO_YOLO")
-    path_to_deepfill: StrictStr = Field(..., validation_alias="PATH_TO_DEEPFILL")
+    path_to_cnn: StrictStr = Field(..., validation_alias="PATH_TO_CNN")
+    path_to_gan: StrictStr = Field(..., validation_alias="PATH_TO_GAN")
 
     class Config:
         env_file = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, '.envs', 'ml.env')

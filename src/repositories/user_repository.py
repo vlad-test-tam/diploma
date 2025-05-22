@@ -51,7 +51,6 @@ class UserRepository:
             self.db.commit()
 
     def update_user_password(self, email: str, new_password_hash: str) -> None:
-        """Обновляет пароль пользователя"""
         user = self.db.query(User).filter(User.email == email).first()
         if user:
             user.password = new_password_hash

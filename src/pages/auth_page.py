@@ -75,6 +75,7 @@ class AuthPage(BasePage):
             password_sign_up = st.text_input("Пароль *", type='password')
             check_password_sign_up = st.text_input("Повторите пароль *", type='password')
             password_check = self.auth_service.check_password(password_sign_up, check_password_sign_up)
+            password_len_check = self.auth_service.check_len_password(password_sign_up)
             username_check = self.auth_service.non_empty_str_check(username_sign_up)
 
             st.markdown("###")
@@ -83,12 +84,14 @@ class AuthPage(BasePage):
             if sign_up_submit_button:
                 if not password_check:
                     st.error("Пароли не совпадают")
+                elif not password_len_check:
+                    st.error("Минимальная длина пароля должна быть 8 символов")
                 elif not valid_email_check:
                     st.error("Введите действительный адрес почты")
                 elif not unique_email_check:
                     st.error("Адрес почты уже используется")
                 elif not username_check:
-                    st.error("Введите имя")
+                    st.error("Введите имя пользователя")
                 if password_check and valid_email_check and unique_email_check:
                     self.auth_service.register_new_user(email_sign_up, username_sign_up, password_sign_up)
                     st.success("Регистрация успешна!")
@@ -105,16 +108,14 @@ class AuthPage(BasePage):
             current_passwd = st.text_input("Текущий пароль")
             current_passwd_check = self.auth_service.check_current_password(email_reset_passwd, current_passwd)
             new_passwd = st.text_input("Новый пароль", type='password')
-            new_passwd_1 = st.text_input("Повторите новый пароль", type='password')
+            new_passwd_re = st.text_input("Повторите новый пароль", type='password')
             st.markdown("###")
             reset_passwd_submit_button = st.form_submit_button(label='Сменить пароль')
 
             if reset_passwd_submit_button:
-                if not email_exists_check:
-                    st.error("Неверный адрес электронной почты")
-                elif not current_passwd_check:
-                    st.error("Неверный текущий пароль")
-                elif new_passwd != new_passwd_1:
+                if not email_exists_check or not current_passwd_check:
+                    st.error("Неверный адрес почты или пароль")
+                elif new_passwd != new_passwd_re:
                     st.error("Пароли не совпадают")
                 else:
                     self.auth_service.change_password(email_reset_passwd, new_passwd)

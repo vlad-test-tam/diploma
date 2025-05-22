@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Dict, Literal
+from typing import Dict, Literal
 
 
 class Coordinates(BaseModel):
@@ -8,7 +8,7 @@ class Coordinates(BaseModel):
 
 
 class Defect(BaseModel):
-    type: Literal['blur', 'abrasion', 'scratch', 'noise']
+    type: Literal['scratch', 'noise']
     coordinates: Coordinates
 
 

@@ -55,6 +55,12 @@ class AuthService:
     def check_password(self, password: str, check_password: str):
         return password == check_password
 
+    def check_len_password(self, password_sign_up):
+        if len(password_sign_up) > 7:
+            return True
+        else:
+            return False
+
     def register_new_user(self, email: str, username: str, password: str) -> UserDTO:
 
         if self.user_repo.get_user_by_email(email) is not None:
@@ -90,3 +96,4 @@ class AuthService:
 
     def get_user_by_id(self, user_id):
         return self.user_repo.get_user_by_id(user_id)
+

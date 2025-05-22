@@ -8,7 +8,7 @@ import numpy as np
 from src.ml_pipeline.preprocessing.defects_generator.scratch_generator import ScratchGenerator
 
 
-class PicsProcessor:
+class DatasetProcessor:
     def __init__(self, source_dir: str, images_dir: str, labels_dir: str, masks_dir: str, train_images_num: int = 40000):
         self.source_dir = source_dir
         self.images_dir = images_dir
@@ -20,7 +20,6 @@ class PicsProcessor:
         os.makedirs(self.masks_dir, exist_ok=True)
 
     def process_images(self):
-        """Обрабатывает все изображения в исходном каталоге."""
         current_image_num = 0
         for filename in os.listdir(self.source_dir):
             if filename.lower().endswith(('.jpg', '.jpeg', '.png', '.bmp')):
@@ -29,7 +28,6 @@ class PicsProcessor:
                 current_image_num += 1
 
     def _process_image(self, source_path: str, filename: str, current_image_num: int):
-        """Обрабатывает одно изображение и сохраняет результат."""
         # Генерация дефектов
         generator = ScratchGenerator(source_path)
         generator.generate_defects()
@@ -53,38 +51,30 @@ class PicsProcessor:
 
         yolo_lines = self._mask_to_yolo_format(generator.defect_mask, filename)
 
-        # Сохранение маски
         cv2.imwrite(masks_path, generator.defect_mask)
-
-        # Сохранение аннотации в YOLO формате
 
         with open(labels_path, 'w') as f:
             f.write("\n".join(yolo_lines))
         print(f"Image {filename} has been processed")
 
     def _mask_to_yolo_format(self, mask: np.ndarray, filename: str):
-        """Преобразует маску в формат YOLO и возвращает аннотацию."""
-        class_id = 0  # Если один класс, можно оставить 0
+        class_id = 0
 
-        # Убедимся, что маска в градациях серого
         if len(mask.shape) == 3:
             mask = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
 
         h, w = mask.shape
 
-        # Бинаризация (на случай если не строго 0 и 255)
         _, binary_mask = cv2.threshold(mask, 127, 255, cv2.THRESH_BINARY)
 
-        # Поиск контуров
         contours, _ = cv2.findContours(binary_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         yolo_lines = []
 
         for contour in contours:
             if len(contour) < 3:
-                continue  # Пропускаем слишком маленькие области
+                continue
 
-            # Нормализация координат
             points = contour.squeeze()
             if len(points.shape) != 2:
                 continue
@@ -97,7 +87,7 @@ class PicsProcessor:
 
 
 if __name__ == '__main__':
-    processor = PicsProcessor(
+    processor = DatasetProcessor(
         r'D:\Projects\Python\diploma_project\src\ml_pipeline\original_images\yolov11\scratch3',
         r'D:\Projects\Python\diploma_project\src\ml_pipeline\dataset3\images',
         r'D:\Projects\Python\diploma_project\src\ml_pipeline\dataset3\labels',

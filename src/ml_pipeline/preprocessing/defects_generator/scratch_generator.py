@@ -62,7 +62,6 @@ class ScratchGenerator(BaseDefectGenerator):
                             cv2.circle(self.defected_image, (point[0], point[1]), 2, new_color, -1)
                     break
 
-        # Convert non-black points in the mask to white
         self.defect_mask[np.any(self.defect_mask != [0, 0, 0], axis=-1)] = [255, 255, 255]
 
         return self.defected_image
@@ -92,72 +91,70 @@ class ScratchGenerator(BaseDefectGenerator):
         p3[2] = np.random.uniform(1, 5)
 
         if use_catmull:
-            p0 = p1.copy()  # Save original p1 for Catmull-Rom
+            p0 = p1.copy()
             p1 = p2
             p2 = p3
             p3 = np.array([p1[0] + 20, p1[1] + 20])
             points = self._catmull_rom(p0[:2], p1[:2], p2[:2], p3[:2], noise_level=noise_level)
             self._draw_scratch(img, orig_img, points, line_thickness)
-            return img, points  # Return points from Catmull-Rom
+            return img, points  #  Catmull-Rom
         else:
             bezier_points = list(self._bezier(p1, p2, p3, noise_level))
             self._draw_scratch(img, orig_img, bezier_points, line_thickness)
-            return img, bezier_points  # Return bezier points
+            return img, bezier_points  #  bezier
 
-        return img, []
 
-    def _draw_scratch(self, img: np.ndarray, orig_img: np.ndarray, bezier_points: list, line_thickness: int) -> None:
-        line_color = self._random_color()  # Генерируем случайный цвет для линий
-        for i, point in enumerate(bezier_points):
-            if 0 <= point[0] < img.shape[1] and 0 <= point[1] < img.shape[0]:  # Проверка границ
+    def _draw_scratch(self, img: np.ndarray, orig_img: np.ndarray, points: list, line_thickness: int) -> None:
+        line_color = self._random_color()
+        for i, point in enumerate(points):
+            if 0 <= point[0] < img.shape[1] and 0 <= point[1] < img.shape[0]:
                 if random.random() < 0.9:
-                    # Уменьшаем влияние исходного цвета и увеличиваем белизну
-                    new_color = line_color  # Используем случайный цвет для царапин
+                    new_color = line_color
 
-                    # Логика для толщины линии
-                    brightness_factor = 1 + (line_thickness / 10)  # Увеличение яркости в зависимости от толщины
+                    brightness_factor = 1 + (line_thickness / 10)
+                    new_color = np.clip(
+                        np.array(new_color) * brightness_factor, 0, 255
+                    ).astype(int)
+
+                    if i == 0 or i == len(points) - 1:
+                        if random.random() < 0.1:
+                            new_color = np.clip(
+                                np.array(new_color) * 0.8, 0, 255
+                            ).astype(int)
+
+                    new_color = tuple(map(int, new_color))
+                    cv2.circle(
+                        img, (point[0], point[1]),
+                        line_thickness, new_color, -1
+                    )
+                else:
+                    orig_color = orig_img[point[1], point[0]]
+
+                    gray_value = self._rgb_to_gray(orig_color)
+                    new_color = (gray_value, gray_value, gray_value)
+
+                    if i > 0:
+                        alpha = i / len(points)
+                        new_color = self._interpolate_colors(orig_color, new_color, alpha)
+
+                    brightness_factor = 1 + (line_thickness / 10)
                     new_color = np.clip(np.array(new_color) * brightness_factor, 0, 255).astype(int)
 
-                    # Темные пиксели по краям
-                    if i == 0 or i == len(bezier_points) - 1:
-                        if random.random() < 0.1:  # 10% шанс на темный цвет
+                    if i == 0 or i == len(points) - 1:
+                        if random.random() < 0.1:
                             new_color = np.clip(np.array(new_color) * 0.8, 0, 255).astype(int)
 
                     new_color = tuple(map(int, new_color))
                     cv2.circle(img, (point[0], point[1]), line_thickness, new_color, -1)
-                else:
-                    orig_color = orig_img[point[1], point[0]]  # Получаем оригинальный цвет
 
-                    # Приводим цвет к оттенку серого
-                    gray_value = self._rgb_to_gray(orig_color)
-                    new_color = (gray_value, gray_value, gray_value)
-
-                    # Плавный переход к белому цвету
-                    if i > 0:
-                        alpha = i / len(bezier_points)
-                        new_color = self._interpolate_colors(orig_color, new_color, alpha)
-
-                    # Логика для толщины линии
-                    brightness_factor = 1 + (line_thickness / 10)
-                    new_color = np.clip(np.array(new_color) * brightness_factor, 0, 255).astype(int)
-
-                    # Темные пиксели по краям
-                    if i == 0 or i == len(bezier_points) - 1:
-                        if random.random() < 0.1:  # 10% шанс на темный цвет
-                            new_color = np.clip(np.array(new_color) * 0.8, 0, 255).astype(int)
-
-                    new_color = tuple(map(int, new_color))  # Преобразование в кортеж из целых чисел
-                    cv2.circle(img, (point[0], point[1]), line_thickness, new_color, -1)
-
-    def _draw_straight_line(self, img: np.ndarray, orig_img: np.ndarray, resolution: tuple, noise_level: float = 3.0):
+    def _draw_straight_line(self, img: np.ndarray, resolution: tuple, noise_level: float = 3.0):
         multiplicator = random.uniform(0.007, 0.01)
-        line_thickness = int(min(resolution) * multiplicator)  # Пропорциональная толщина
+        line_thickness = int(min(resolution) * multiplicator)
         H, W = img.shape[:2]
 
         start_side = random.choice(['top', 'bottom', 'left', 'right'])
         end_side = random.choice(['top', 'bottom', 'left', 'right'])
 
-        # Определяем начальную точку
         if start_side == 'top':
             start_point = (random.randint(0, W - 1), 0)
         elif start_side == 'bottom':
@@ -167,7 +164,6 @@ class ScratchGenerator(BaseDefectGenerator):
         else:  # right
             start_point = (W - 1, random.randint(0, H - 1))
 
-        # Определяем конечную точку
         if end_side == 'top':
             end_point = (random.randint(0, W - 1), 0)
         elif end_side == 'bottom':
@@ -177,7 +173,6 @@ class ScratchGenerator(BaseDefectGenerator):
         else:  # right
             end_point = (W - 1, random.randint(0, H - 1))
 
-        # Получаем направление и длину линии
         line_length = int(np.linalg.norm(np.array(end_point) - np.array(start_point)))
         direction = (end_point[0] - start_point[0], end_point[1] - start_point[1])
         step_size = max(int(line_thickness / 2), 1)
@@ -187,132 +182,41 @@ class ScratchGenerator(BaseDefectGenerator):
             x = int(start_point[0] + d * direction[0] / line_length)
             y = int(start_point[1] + d * direction[1] / line_length)
 
-            # Добавляем небольшие случайные шумы
             noise_x = random.uniform(-noise_level, noise_level)
             noise_y = random.uniform(-noise_level, noise_level)
             points.append((int(x + noise_x), int(y + noise_y)))
 
         line_color = self._random_color()
 
-        # Вычисление границ для дефекта
         if points:
             x_coords = [p[0] for p in points]
             y_coords = [p[1] for p in points]
             top_left = (min(x_coords), min(y_coords))
             bottom_right = (max(x_coords), max(y_coords))
 
-            defect_coordinates = Coordinates(
+            defect = Defect(type="scratch", coordinates=Coordinates(
                 start={"x": top_left[0], "y": top_left[1]},
                 end={"x": bottom_right[0], "y": bottom_right[1]}
-            )
-            defect = Defect(type="scratch", coordinates=defect_coordinates)
+            ))
             self.defects.append(defect)
 
-        # Рисуем линию на изображении и маске
         for i, point in enumerate(points):
-            if 0 <= point[0] < W and 0 <= point[1] < H:
-                new_color = line_color  # случайный цвет для царапин
-
-                # Логика для толщины линии
-                brightness_factor = 1 + (line_thickness / 10)  # Увеличение яркости в зависимости от толщины
-                new_color = np.clip(np.array(new_color) * brightness_factor, 0, 255).astype(int)
-
-                # Проверка на темные пиксели
-                if i == 0 or i == len(points) - 1:
-                    if random.random() < 0.1:  # 10% шанс на темный цвет
-                        new_color = np.clip(np.array(new_color) * 0.8, 0, 255).astype(int)
-
-                new_color = tuple(map(int, new_color))
-                cv2.circle(img, point, line_thickness // 2, new_color, -1)
-
-                # Добавление линии в маску
-                cv2.circle(self.defect_mask, point, line_thickness // 2, (255, 255, 255), -1)  # Рисуем белую точку в маске
-
-    def _draw_straight_line_updated(self, img: np.ndarray, orig_img: np.ndarray, resolution: tuple, noise_level: float = 3.0):
-        multiplicator = random.uniform(0.007, 0.01)
-        line_thickness = int(min(resolution) * multiplicator)  # Пропорциональная толщина
-        H, W = img.shape[:2]
-
-        start_side = random.choice(['top', 'bottom', 'left', 'right'])
-        end_side = random.choice(['top', 'bottom', 'left', 'right'])
-
-        # Определяем начальную точку
-        if start_side == 'top':
-            start_point = (random.randint(0, W - 1), 0)
-        elif start_side == 'bottom':
-            start_point = (random.randint(0, W - 1), H - 1)
-        elif start_side == 'left':
-            start_point = (0, random.randint(0, H - 1))
-        else:  # right
-            start_point = (W - 1, random.randint(0, H - 1))
-
-        # Определяем конечную точку
-        if end_side == 'top':
-            end_point = (random.randint(0, W - 1), 0)
-        elif end_side == 'bottom':
-            end_point = (random.randint(0, W - 1), H - 1)
-        elif end_side == 'left':
-            end_point = (0, random.randint(0, H - 1))
-        else:  # right
-            end_point = (W - 1, random.randint(0, H - 1))
-
-        # Получаем направление и длину линии
-        line_length = int(np.linalg.norm(np.array(end_point) - np.array(start_point)))
-        direction = (end_point[0] - start_point[0], end_point[1] - start_point[1])
-        step_size = max(int(line_thickness / 2), 1)
-
-        points = []
-        original_points = []  # Список для оригинальных координат
-
-        for d in range(0, line_length, step_size):
-            x = int(start_point[0] + d * direction[0] / line_length)
-            y = int(start_point[1] + d * direction[1] / line_length)
-
-            # Добавляем небольшие случайные шумы
-            noise_x = random.uniform(-noise_level, noise_level)
-            noise_y = random.uniform(-noise_level, noise_level)
-            noisy_point = (int(x + noise_x), int(y + noise_y))
-            points.append(noisy_point)
-            original_points.append((x, y))  # Сохраняем оригинальную точку
-
-        line_color = self._random_color()
-
-        # Вычисление границ для дефекта
-        if points:
-            x_coords = [p[0] for p in points]
-            y_coords = [p[1] for p in points]
-            top_left = (min(x_coords), min(y_coords))
-            bottom_right = (max(x_coords), max(y_coords))
-
-            defect_coordinates = Coordinates(
-                start={"x": top_left[0], "y": top_left[1]},
-                end={"x": bottom_right[0], "y": bottom_right[1]}
-            )
-            defect = Defect(type="scratch", coordinates=defect_coordinates)
-            self.defects.append(defect)
-
-        # Рисуем линию на изображении
-        for point in points:
             if 0 <= point[0] < W and 0 <= point[1] < H:
                 new_color = line_color
 
-                # Логика для толщины линии
                 brightness_factor = 1 + (line_thickness / 10)
                 new_color = np.clip(np.array(new_color) * brightness_factor, 0, 255).astype(int)
 
-                # Проверка на темные пиксели
-                if points.index(point) in [0, len(points) - 1]:
-                    if random.random() < 0.1:  # 10% шанс на темный цвет
+                if i == 0 or i == len(points) - 1:
+                    if random.random() < 0.1:
                         new_color = np.clip(np.array(new_color) * 0.8, 0, 255).astype(int)
 
                 new_color = tuple(map(int, new_color))
                 cv2.circle(img, point, line_thickness // 2, new_color, -1)
 
-        for point in original_points:  # Используем оригинальные точки
-            if 0 <= point[0] < W and 0 <= point[1] < H:
-                cv2.circle(self.defect_mask, point, line_thickness, (255, 255, 255), -1)  # Заполняем маску
+                cv2.circle(self.defect_mask, point, line_thickness // 2, (255, 255, 255), -1)
 
-    def _check_intersection(self, line1, line2):
+    def _check_intersection(self, line1: tuple, line2: tuple):
         def ccw(A, B, C):
             return (C[1] - A[1]) * (B[0] - A[0]) > (B[1] - A[1]) * (C[0] - A[0])
 
@@ -320,51 +224,60 @@ class ScratchGenerator(BaseDefectGenerator):
         C, D = line2
         return ccw(A, C, D) != ccw(B, C, D) and ccw(A, B, C) != ccw(A, B, D)
 
-    def _interpolate_colors(self, color1, color2, alpha):
+    def _interpolate_colors(self, color1: list, color2: list, alpha: float):
         return (int(color1[0] * (1 - alpha) + color2[0] * alpha),
                 int(color1[1] * (1 - alpha) + color2[1] * alpha),
                 int(color1[2] * (1 - alpha) + color2[2] * alpha))
 
-    def _rgb_to_gray(self, rgb):
+    def _rgb_to_gray(self, rgb: list):
         return int(0.2989 * rgb[0] + 0.5870 * rgb[1] + 0.1140 * rgb[2])
 
     def _random_color(self):
-        """Генерирует случайный цвет в диапазоне от (180, 180, 180) до (255, 255, 255)."""
         gray_value = random.randint(160, 255)
         return (gray_value, gray_value, gray_value)
 
-    def _bezier(self, p1: np.ndarray, p2: np.ndarray, p3: np.ndarray, noise_level: float) -> Generator[
-        np.ndarray, None, None]:
+    def _bezier(self, p1: np.ndarray, p2: np.ndarray,
+                p3: np.ndarray, noise_level: float
+                ) -> Generator[np.ndarray, None, None]:
         def calc(t):
             return t * t * p1 + 2 * t * (1 - t) * p2 + (1 - t) * (1 - t) * p3
 
-        approx = cv2.arcLength(np.array([calc(t)[:2] for t in np.linspace(0, 1, 10)], dtype=np.float32), False)
+        approx = cv2.arcLength(
+            np.array(
+                [calc(t)[:2] for t in np.linspace(0, 1, 10)],
+                dtype=np.float32
+            ),
+            False
+        )
         points = []
 
         for t in np.linspace(0, 1, round(approx * 1.2)):
             point = calc(t)
             noise_x = random.uniform(-noise_level, noise_level)
             noise_y = random.uniform(-noise_level, noise_level)
-            noisy_point = np.round(point + [noise_x, noise_y, 0]).astype(np.int32)
+            noisy_point = np.round(
+                point + [noise_x, noise_y, 0]).astype(np.int32)
             points.append(noisy_point)
 
-        # Вычисление границ для дефекта
         if points:
             x_coords = [p[0] for p in points]
             y_coords = [p[1] for p in points]
             top_left = (min(x_coords), min(y_coords))
             bottom_right = (max(x_coords), max(y_coords))
 
-            defect_coordinates = Coordinates(
+            defect = Defect(type="scratch", coordinates=Coordinates(
                 start={"x": top_left[0], "y": top_left[1]},
                 end={"x": bottom_right[0], "y": bottom_right[1]}
-            )
-            defect = Defect(type="scratch", coordinates=defect_coordinates)
+            ))
             self.defects.append(defect)
 
         yield from points
 
-    def _catmull_rom(self, p0, p1, p2, p3, num_points=100, noise_level=1.0):
+    def _catmull_rom(
+            self, p0: list, p1: list,
+            p2: list, p3: list,
+            num_points: int = 100,
+            noise_level: float = 1.0):
         points = []
 
         for t in np.linspace(0, 1, num_points):
@@ -378,24 +291,22 @@ class ScratchGenerator(BaseDefectGenerator):
             noise_y = random.uniform(-noise_level, noise_level)
             points.append((int(x + noise_x), int(y + noise_y)))
 
-        # Вычисление границ для дефекта
         if points:
             x_coords = [p[0] for p in points]
             y_coords = [p[1] for p in points]
             top_left = (min(x_coords), min(y_coords))
             bottom_right = (max(x_coords), max(y_coords))
 
-            defect_coordinates = Coordinates(
+            defect = Defect(type="scratch", coordinates=Coordinates(
                 start={"x": top_left[0], "y": top_left[1]},
                 end={"x": bottom_right[0], "y": bottom_right[1]}
-            )
-            defect = Defect(type="scratch", coordinates=defect_coordinates)
+            ))
             self.defects.append(defect)
 
         return points
 
-    def _draw_defect_on_mask(self, bezier_points):
+    def _draw_defect_on_mask(self, bezier_points: list):
         for point in bezier_points:
             if 0 <= point[0] < self.defect_mask.shape[1] and 0 <= point[1] < self.defect_mask.shape[0]:
                 cv2.circle(self.defect_mask, (point[0], point[1]), 2, (255, 255, 255),
-                           -1)  # Draw white circle on the mask
+                           -1)

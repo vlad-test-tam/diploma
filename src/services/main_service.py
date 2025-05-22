@@ -1,9 +1,13 @@
 import os
 import shutil
+import time
 import uuid
 from datetime import datetime
 
 from src.entities.image import ImageAddDTO
+from src.ml_pipeline.model_cnn.test.test_segment import ImageSegmentation
+from src.ml_pipeline.model_gan.test.test_inpaint import Inpainter
+from src.ml_pipeline.model_manager import ModelManager
 from src.repositories.image_repository import ImageRepository
 from src.repositories.user_repository import UserRepository
 from src.settings.ml_settings import ml_settings
@@ -11,17 +15,21 @@ from src.utils.database import session
 from PIL import Image
 import numpy as np
 
-from src.ml_pipeline.test.deepfill.test import Inpainting
-from src.ml_pipeline.test.yolov11.test_segment import ImageSegmentation
-
 user_repository = UserRepository(session)
 image_repository = ImageRepository(session)
+
+model_manager = ModelManager(r"D:\Projects\Python\diploma_project\src\settings\models_config.json", ml_settings=ml_settings)
+cnn_model = model_manager.load_model('cnn')
+gan_model = model_manager.load_model('gan')
 
 
 class MainService:
     def __init__(self, user_repo: UserRepository = user_repository, image_repo: ImageRepository = image_repository):
         self.user_repo = user_repo
         self.image_repo = image_repo
+        self.cnn_model = cnn_model
+        self.gan_model = gan_model
+
 
     def add_image(self, user_id, is_liked, temp_folder, upload_folder, filename):
         self.save_temp_image(temp_folder, upload_folder, filename)
@@ -40,21 +48,31 @@ class MainService:
         return self.user_repo.decrease_attempts_count(user_id)
 
     def image_processing(self, uploaded_image, filepath, filename):
+        start_time = time.time()
+
         image = Image.open(uploaded_image).convert('RGB')
         image_np = np.array(image)
 
+        segment_filepath = os.path.join(filepath, "segmented")
         mask_filepath = os.path.join(filepath, "masked")
-        path_to_weights = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, ml_settings.path_to_yolo)
-        segmentation = ImageSegmentation(path_to_weights, mask_filepath)
-        masked_image = segmentation.segment_image(image_np, filename)
-        print(f"2 {filename}")
+        os.makedirs(segment_filepath, exist_ok=True)
+        os.makedirs(mask_filepath, exist_ok=True)
+
+        segmentation = ImageSegmentation(
+            model=self.cnn_model,
+            save_segment_dir=segment_filepath,
+            save_mask_dir=mask_filepath
+        )
+        segmented_image, masked_image = segmentation.segment_image(image_np, filename)
         mask_np = np.array(masked_image)
-
-        inpainting = Inpainting(image=image_np, mask=mask_np)
+        inpainting = Inpainter(
+            image=image_np,
+            mask=mask_np,
+            generator=self.gan_model
+        )
         inpainted_image = inpainting.inpaint()
-        # inpainted_image = Image.open(inpainting.out)
-
-        return inpainted_image, masked_image
+        print(f"TIME: {time.time() - start_time}")
+        return segmented_image, masked_image, inpainted_image
 
     def generate_unique_filename(self, original_filename: str) -> str:
         ext = original_filename.split('.')[-1]
@@ -63,11 +81,10 @@ class MainService:
         return f"{timestamp}_{unique_id}.{ext}"
 
     def handle_processing(self, st, upload_folder, filename):
-        print(f"1 {filename}")
-        processed_image, masked_image = self.image_processing(st.session_state.uploaded_image, upload_folder, filename)
-        print(f"4 {filename}")
+        segmented_image, masked_image, processed_image = self.image_processing(st.session_state.uploaded_image, upload_folder, filename)
         st.session_state.original_image = st.session_state.uploaded_image
         st.session_state.masked_image = masked_image
+        st.session_state.segmented_image = segmented_image
         st.session_state.result_image = processed_image
 
         defected_image = Image.open(st.session_state.original_image)

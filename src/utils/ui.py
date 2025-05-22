@@ -13,9 +13,9 @@ class UserInterfaceUtils:
             "logo_path": r"saved_images\front\logo-flawless.png",
             "arrow_left_path": r"saved_images\front\right_to_left.png",
             "arrow_right_path": r"saved_images\front\left_to_right.png",
-            "example1_path": r"saved_images\front\example_1.png",
-            "example2_path": r"saved_images\front\example_1.png",
-            "example3_path": r"saved_images\front\example_1.png"
+            "example1_path": r"saved_images\front\ex_1.png",
+            "example2_path": r"saved_images\front\ex_2.png",
+            "example3_path": r"saved_images\front\ex_3.png"
         }
 
     def get_current_user(self, st, auth):
